@@ -4,4 +4,4 @@ numpy
 matplotlib
 pillow
 pyocr
-re
+tesseract
