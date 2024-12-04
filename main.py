@@ -15,6 +15,9 @@ ATK = np.array([41, 47, 53, 58])
 NUMS_DEFAULT = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
 FONT_TYPE = "meiryo"
 
+# tesseract
+tool = None
+
 app = Flask(__name__)
 
 @app.route("/", methods=["GET", "POST"])
@@ -146,6 +149,7 @@ def get_data():
 
 class ArtifactReader():
     def __init__(self, img):
+        global tool
         # 文字を読み取る
         self.img = img
         self.builder = pyocr.builders.TextBuilder(tesseract_layout=6)
