@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import pyocr
+import pytesseract
 import io
 import math
 import sys
@@ -25,7 +26,6 @@ def hello_world():
 def scan_img():
     # POSTリクエストから画像を取得
     file = request.files['image']
-    print(file.filename)
     
     # 画像をPIL形式で開く
     img = Image.open(file)
@@ -148,7 +148,7 @@ class ArtifactReader():
     def __init__(self, img):
         # OCR設定
         #Tesseractのインストール場所をOSに教える
-        self.tesseract_path = self.resource_path("Tesseract-OCR")
+        '''self.tesseract_path = self.resource_path("Tesseract-OCR")
         if self.tesseract_path not in os.environ["PATH"].split(os.pathsep):
             os.environ["PATH"] += os.pathsep + self.tesseract_path
         self.tools = pyocr.get_available_tools() 
@@ -158,12 +158,12 @@ class ArtifactReader():
             print("OCRエンジンが指定されていません")
             sys.exit(1)
         else:
-            self.tool = self.tools[0]
+            self.tool = self.tools[0]'''
         
         # 文字を読み取る
         self.img = img
-        self.builder = pyocr.builders.TextBuilder(tesseract_layout=6)
-        self.result = self.tool.image_to_string(self.img,lang="jpn",builder=self.builder)
+        #self.builder = pyocr.builders.TextBuilder(tesseract_layout=6)
+        self.result = pytesseract.image_to_string(self.img,lang="jpn")
 
         self.option = 0
         self.is_crit_dmg = False
