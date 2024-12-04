@@ -1,34 +1,15 @@
 from flask import *
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
-import pyocr
-import re
 import io
 
-# 率、ダメ
+# 定数
 CRIT = np.array([54, 62, 70, 78])
-# 攻撃
 ATK = np.array([41, 47, 53, 58])
-# スコア確率
-NUMS = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
-# 初期オプ数
-OPTION = 4
-# 初期オプに含まれているか
-IS_CRIT_DMG = True
-IS_CRIT_RATE = True
-IS_ATK = True
-# 初期スコア
-INIT_SCORE = 0
-# 調査スコア
-SCORE = 0
-# 強化回数
-COUNT = 5
-# GUIフォント
+NUMS_DEFAULT = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
 FONT_TYPE = "meiryo"
 
 app = Flask(__name__)
-
 
 @app.route("/", methods=["GET", "POST"])
 def hello_world():
@@ -36,35 +17,37 @@ def hello_world():
 
 @app.route("/get-data", methods=["POST"])
 def get_data():
-    global NUMS, OPTION, IS_CRIT_DMG, IS_CRIT_RATE, IS_ATK, INIT_SCORE, SCORE, COUNT
-
     # リクエストから数値を取得
     data = request.get_json()
 
-    OPTION = int(data['option'])
-    IS_CRIT_DMG = bool(data['crit_dmg'])
-    IS_CRIT_RATE = bool(data['crit_rate'])
-    IS_ATK = bool(data['atk'])
-    INIT_SCORE = int(data['init'])
-    SCORE = int(data['score'])
-    COUNT = int(data['count'])
+    option = int(data['option'])
+    is_crit_dmg = bool(data['crit_dmg'])
+    is_crit_rate = bool(data['crit_rate'])
+    is_atk = bool(data['atk'])
+    init_score = int(data['init'])
+    score = int(data['score'])
+    count = int(data['count'])
 
-    NUMS = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
-    if not IS_ATK:
-        NUMS[0:4] = 0
-    if not IS_CRIT_DMG:
-        NUMS[4:8] = 0
-    if not IS_CRIT_RATE:
-        NUMS[8:12] = 0
+    # NUMSをリセット
+    nums = np.copy(NUMS_DEFAULT)
 
-    calc = Calculator()
+    # オプションに応じてNUMSを調整
+    if not is_atk:
+        nums[0:4] = 0
+    if not is_crit_dmg:
+        nums[4:8] = 0
+    if not is_crit_rate:
+        nums[8:12] = 0
+
+    calc = Calculator(option, is_crit_dmg, is_crit_rate, is_atk, nums, init_score, score, count)
     y = calc.calculate()
     x = np.zeros(y.shape[0])
     for i in range(x.shape[0]):
         x[i] = i / 10.0
 
+    # グラフを作成
     fig, ax = plt.subplots(figsize=(6,3))
-    ax.bar(INIT_SCORE + x, y, width = 0.05)
+    ax.bar(init_score + x, y, width=0.05)
 
     # グラフをメモリ内の画像として保存
     img = io.BytesIO()
@@ -75,6 +58,16 @@ def get_data():
     return send_file(img, mimetype='image/png')
 
 class Calculator():
+    def __init__(self, option, is_crit_dmg, is_crit_rate, is_atk, nums, init_score, score, count):
+        self.option = option
+        self.is_crit_dmg = is_crit_dmg
+        self.is_crit_rate = is_crit_rate
+        self.is_atk = is_atk
+        self.nums = nums
+        self.init_score = init_score
+        self.score = score
+        self.count = count
+
     # スコアの伸びの分布を計算 (indexが伸び幅の10倍整数)
     def getDistribution(self, nums, count):
         dp = np.zeros((count + 1, max(nums) * count + 1))
@@ -88,40 +81,40 @@ class Calculator():
         return dp[count]
 
     def calculate(self):
-        if OPTION == 4:
-            y = self.getDistribution(NUMS, COUNT)
+        if self.option == 4:
+            y = self.getDistribution(self.nums, self.count)
             return y
         else:
-            NUMS_4OP = []
-            if not IS_CRIT_DMG:
-                tmp = np.copy(NUMS)
+            nums_4op = []
+            if not self.is_crit_dmg:
+                tmp = np.copy(self.nums)
                 tmp[12:] = CRIT
-                NUMS_4OP.append(tmp)
-            if not IS_CRIT_RATE:
-                tmp = np.copy(NUMS)
+                nums_4op.append(tmp)
+            if not self.is_crit_rate:
+                tmp = np.copy(self.nums)
                 tmp[12:] = CRIT
-                NUMS_4OP.append(tmp)
-            if not IS_ATK:
-                tmp = np.copy(NUMS)
+                nums_4op.append(tmp)
+            if not self.is_atk:
+                tmp = np.copy(self.nums)
                 tmp[12:] = ATK
-                NUMS_4OP.append(tmp)
-            
-            main_probability = (7 - len(NUMS_4OP)) / 7
+                nums_4op.append(tmp)
+
+            main_probability = (7 - len(nums_4op)) / 7
             sub_probability = 0
-            if len(NUMS_4OP) != 0:
-                sub_probability = (1 - main_probability) / len(NUMS_4OP)
+            if len(nums_4op) != 0:
+                sub_probability = (1 - main_probability) / len(nums_4op)
 
-            y = np.zeros(np.amax(CRIT) * COUNT + 1)
+            y = np.zeros(np.amax(CRIT) * self.count + 1)
 
-            main_y = self.getDistribution(NUMS, COUNT - 1)
+            main_y = self.getDistribution(self.nums, self.count - 1)
             y[0:main_y.shape[0]] += main_y * main_probability
 
-            for nums in NUMS_4OP:
+            for nums in nums_4op:
                 for num_4th in nums:
-                    sub_y = self.getDistribution(nums, COUNT - 1)
+                    sub_y = self.getDistribution(nums, self.count - 1)
                     y[num_4th:num_4th + sub_y.shape[0]] += sub_y / len(nums) * sub_probability
 
             return y
 
 if __name__ == "__main__":
-    app.run()
+    app.run(threaded=True)
