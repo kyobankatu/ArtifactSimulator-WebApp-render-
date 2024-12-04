@@ -15,9 +15,6 @@ ATK = np.array([41, 47, 53, 58])
 NUMS_DEFAULT = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
 FONT_TYPE = "meiryo"
 
-# tesseract
-tool = None
-
 app = Flask(__name__)
 
 @app.route("/", methods=["GET", "POST"])
@@ -149,11 +146,24 @@ def get_data():
 
 class ArtifactReader():
     def __init__(self, img):
-        global tool
+        # OCR設定
+        #Tesseractのインストール場所をOSに教える
+        self.tesseract_path = self.resource_path("Tesseract-OCR")
+        if self.tesseract_path not in os.environ["PATH"].split(os.pathsep):
+            os.environ["PATH"] += os.pathsep + self.tesseract_path
+        self.tools = pyocr.get_available_tools() 
+        print(self.tesseract_path)
+        #OCRエンジンを取得する
+        if len(self.tools) == 0:
+            print("OCRエンジンが指定されていません")
+            sys.exit(1)
+        else:
+            self.tool = self.tools[0]
+        
         # 文字を読み取る
         self.img = img
         self.builder = pyocr.builders.TextBuilder(tesseract_layout=6)
-        self.result = tool.image_to_string(self.img,lang="jpn",builder=self.builder)
+        self.result = self.tool.image_to_string(self.img,lang="jpn",builder=self.builder)
 
         self.option = 0
         self.is_crit_dmg = False
@@ -174,6 +184,12 @@ class ArtifactReader():
 
         # 初期スコア
         self.init_score = self.getScore_attack(self.result)
+    
+    
+    def resource_path(self, relative_path):
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
           
     def find(self, result,str):
         return [result[m.start()+len(str)-1:m.start()+len(str)+4] for m in re.finditer(str, result)]
@@ -275,24 +291,5 @@ class Calculator():
 
             return y
 
-def resource_path(relative_path):
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
-
 if __name__ == "__main__":
-    # OCR設定
-    #Tesseractのインストール場所をOSに教える
-    tesseract_path = resource_path("Tesseract-OCR")
-    if tesseract_path not in os.environ["PATH"].split(os.pathsep):
-        os.environ["PATH"] += os.pathsep + tesseract_path
-    tools = pyocr.get_available_tools() 
-    print(tesseract_path)
-    #OCRエンジンを取得する
-    if len(tools) == 0:
-        print("OCRエンジンが指定されていません")
-        sys.exit(1)
-    else:
-        tool = tools[0]
-
     app.run(threaded=True)
