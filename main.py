@@ -49,6 +49,7 @@ def get_data():
     SCORE = int(data['score'])
     COUNT = int(data['count'])
 
+    NUMS = np.array([41, 47, 53, 58, 54, 62, 70, 78, 54, 62, 70, 78, 0, 0, 0, 0])
     if not IS_ATK:
         NUMS[0:4] = 0
     if not IS_CRIT_DMG:
