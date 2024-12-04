@@ -36,7 +36,7 @@ def hello_world():
 
 @app.route("/get-data", methods=["POST"])
 def get_data():
-    global OPTION, IS_CRIT_DMG, IS_CRIT_RATE, IS_ATK, INIT_SCORE, SCORE, COUNT
+    global NUMS, OPTION, IS_CRIT_DMG, IS_CRIT_RATE, IS_ATK, INIT_SCORE, SCORE, COUNT
 
     # リクエストから数値を取得
     data = request.get_json()
