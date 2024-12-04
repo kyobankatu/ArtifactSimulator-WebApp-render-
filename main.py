@@ -151,7 +151,7 @@ class ArtifactReader():
         if self.tesseract_path not in os.environ["PATH"].split(os.pathsep):
             os.environ["PATH"] += os.pathsep + self.tesseract_path
         self.tools = pyocr.get_available_tools()
-        print(os.pathsep + self.tesseract_path)
+        print(os.environ["PATH"])
         #OCRエンジンを取得する
         if len(self.tools) == 0:
             print("OCRエンジンが指定されていません")
